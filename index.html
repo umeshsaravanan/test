@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C Compiler</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    <div id="overLay" style="display: none;">
+        <div id="fileNameInput">
+            <label for="name">File Name :</label>
+            <input type="text" name="name" id="name">
+            <button onclick="closeFileName()" class="SubmitBtn">Submit</button>
+            <button onclick="closee()" class="closeBtn">Close</button>
+        </div>
+    </div>
+    <div class="home">
+        <div class="left">
+            <p id="displayFileName">select a file</p>
+            <div id="codeSection" contenteditable="true" spellcheck="false" oninput="highlightKeywords()"
+                onkeydown="handleKeyDown(event)">
+            </div>
+            <button onclick="compile()" type="button" id="runBtn" disabled="true">Run</button>
+            <textarea id="result" placeholder="output will be displayed here..."></textarea>
+        </div>
+        <div class="right">
+            <div class="inputAndUser">
+                <div class="customInput">
+                    <center>
+                        <h3>Custom Inputs</h3>
+                    </center>
+                </div>
+                <div class="userDetails">
+                    <center>
+                        <h3>User Details</h3>
+                    </center>
+                    <div class="userAndFiles">
+                        <div class="user" id="userSection">
+                        </div>
+                        <div id="files">
+                            <center>
+                                <h3>Files</h3>
+                                <button class="newFileBtn" onclick="getFileName()">New File</button>
+                            </center>
+                            <ol id="fileList">
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="compilation">
+                <center style="margin-bottom: 30px;">
+                    <h3>Compilation Status</h3>
+                </center>
+                <div style="display: flex;justify-content: space-between;font-weight: bolder;">
+                    <div style="display: flex;justify-content: space-between;flex-direction: column; gap: 3rem;">
+                        <p id="compilationStatus"></p>
+                        <p id="memory"></p>
+                    </div>
+                    <div
+                        style="display: flex;justify-content: space-between;flex-direction: column; gap: 3rem; color: #218838;">
+                        <p id="bestCompilation">Best Compilation <br></p>
+                        <p id="bestMemory">Best Memory Usage <br></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+</body>
+<script>
+
+    window.onload = function () {
+        const codeSection = document.getElementById("codeSection");
+        codeSection.innerHTML = '';
+        codeSection.focus();
+    };
+
+    codeSection.addEventListener("input", () => {
+        if (codeSection.innerText.trim() === '') {
+            codeSection.focus();
+            setTimeout(() => {
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(codeSection);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }, 0);
+        }
+    });
+
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    const dataTypes = [
+        "int", "float", "double", "const", "void", "struct", "union",
+        "char", "short", "long", "unsigned", "signed", "bool", "enum",
+        "size_t", "int8_t", "int16_t", "int32_t", "int64_t",
+        "uint8_t", "uint16_t", "uint32_t", "uint64_t", "wchar_t",
+        "std::string", "std::vector", "std::map", "std::set", "auto", "decltype", "string"
+    ];
+
+    const keywords = [
+        "if", "else", "for", "while", "do", "#", "include", "return",
+        "switch", "case", "default", "break", "continue", "goto",
+        "static", "extern", "typedef", "volatile", "inline",
+        "asm", "restrict", "sizeof", "nullptr", "try", "catch", "throw",
+        "namespace", "using", "class", "public", "private", "protected",
+        "virtual", "friend", "const_cast", "dynamic_cast", "static_cast",
+        "reinterpret_cast", "new", "delete", "new[]", "delete[]", "this",
+        "sizeof", "alignof", "alignas", "noexcept",
+    ];
+
+
+    function highlightKeywords() {
+        const codeSection = document.getElementById("codeSection");
+        const originalText = codeSection.innerText;
+        const cursorPos = saveCursorPosition(codeSection);
+        codeSection.innerHTML = highlight(originalText);
+
+        const resultDiv = document.getElementById("result");
+        if (document.activeElement !== resultDiv) {
+            restoreCursorPosition(codeSection, cursorPos);
+        }
+        codeSection.scrollTop = codeSection.scrollHeight;
+    }
+
+    function highlight(text) {
+        text = escapeHtml(text);
+        let multiLineComment = false;
+
+        const lines = text.split('\n').map(line => {
+            if (line.includes('<span')) {
+                return line;
+            }
+            if (multiLineComment) {
+                if (line.endsWith('*/')) {
+                    multiLineComment = false;
+                    return `<span class="comment">${line}</span>`;
+                }
+                else if (line.trim().includes('*/')) {
+                    multiLineComment = false;
+                    const array = line.split('*/');
+                    return `<span class='comment'>${array[0] + '*/'}</span>` + highlight(array[1]);
+                } else
+                    return `<span class="comment">${line}</span>`;
+            }
+
+            if (line.trim().startsWith('/*')) {
+                multiLineComment = true;
+                return `<span class="comment">${line}</span>`;
+            }
+            if (line.trim().includes('/*')) {
+                multiLineComment = true;
+                const array = line.split('/*');
+                return highlight(array[0]) + `<span class='comment'>${"/*" + array[1]}</span>`;
+            }
+            if (line.trim().startsWith('//')) {
+                return `<span class="comment">${line}</span>`;
+            }
+
+            if (line.includes('//')) {
+                const array = line.split('//');
+                return array[0] + `<span class='comment'>${"//" + array[1]}</span>`;
+            }
+
+            if (line.includes('#include')) {
+                const match = line.match(/#include\s*(["'])(.*?)\1/);
+
+                if (match) {
+                    const quote = (match[1]);
+                    const content = (match[2]);
+
+                    return `<span class='include'>${(match[0].slice(0, match.index + 8))}</span>` +
+                        `<span class='keyword'>${quote}${content}${quote}</span>`;
+                } else {
+                    let array = line.split(escapeHtml('<'));
+                    if (array.length > 1) {
+                        return `<span class='include'>${array[0]}</span>` +
+                            `<span class='keyword'>${"&lt;" + array[1]}</span>`;
+                    } else {
+                        return `<span class='include'>${(line)}</span>`;
+                    }
+                }
+
+            }
+
+            const keywordsToHighlight = ["printf", "scanf", "cin", "cout"];
+
+            if (keywordsToHighlight.some(keyword => line.includes(keyword))) {
+                const wordRegex = new RegExp(`\\b(${keywordsToHighlight.join('|')})\\b`, 'g');
+
+                const segments = line.split(/(\);)/);
+                const seenKeyword = { highlighted: false };
+
+                const highlightedSegments = segments.map(segment => {
+                    const seenKeyword = { highlighted: false };
+                    return segment.replace(wordRegex, (match) => {
+                        if (!seenKeyword.highlighted) {
+                            seenKeyword.highlighted = true;
+                            return `<span class="keyword">${match}</span>`;
+                        }
+                        return match;
+                    });
+                });
+
+                return highlightedSegments.join('');
+            }
+
+            wordRegex = new RegExp(`(\\b(${keywords.join('|')})\\b|\\b(${dataTypes.join('|')})\\b)`, 'g');
+
+            return line.replace(wordRegex, (match) => {
+                if (keywords.includes(match)) {
+                    return `<span class='keyword'>${match}</span>`;
+                } else if (dataTypes.includes(match)) {
+                    return `<span class='data-type'>${match}</span>`;
+                }
+                return match;
+            });
+        });
+        return lines.join('\n');
+    }
+
+    function saveCursorPosition(element) {
+        const selection = window.getSelection();
+        if (selection.rangeCount === 0) return 0;
+
+        const range = selection.getRangeAt(0);
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(element);
+        preRange.setEnd(range.endContainer, range.endOffset);
+        return preRange.toString().length;
+    }
+
+    function restoreCursorPosition(element, offset) {
+        const range = document.createRange();
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+
+        let charIndex = 0;
+        let node = element;
+        let found = false;
+
+        function traverseNodes(currentNode) {
+            for (let i = 0; i < currentNode.childNodes.length; i++) {
+                const child = currentNode.childNodes[i];
+                if (child.nodeType === Node.TEXT_NODE) {
+                    const textLength = child.textContent.length;
+
+                    if (charIndex + textLength >= offset) {
+                        range.setStart(child, offset - charIndex);
+                        found = true;
+                        break;
+                    } else {
+                        charIndex += textLength;
+                    }
+                } else {
+                    traverseNodes(child);
+                    if (found) break;
+                }
+            }
+        }
+
+        traverseNodes(node);
+
+        range.collapse(true);
+        selection.addRange(range);
+        element.focus();
+    }
+
+    const pairs = {
+        ']': '[',
+        ')': '(',
+    };
+    function handleKeyDown(event) {
+        const codeSection = document.getElementById("codeSection");
+        const cursorPos = saveCursorPosition(codeSection);
+        const nextChar = codeSection.innerText[cursorPos] || '';
+        const prevChar = codeSection.innerText[cursorPos - 1] || '';
+
+        codeSection.scrollBy = codeSection.scrollHeight;
+
+        if (event.key === 'Tab') {
+            event.preventDefault();
+            document.execCommand("insertText", false, "    ");
+            return;
+        }
+
+        if (pairs[event.key] && prevChar === pairs[event.key]) {
+            event.preventDefault();
+            restoreCursorPosition(codeSection, cursorPos + 1);
+        }
+
+        if (event.key === '"') {
+            event.preventDefault();
+            if (prevChar === '"') {
+                restoreCursorPosition(codeSection, cursorPos + 1);
+            } else {
+                document.execCommand('insertText', false, '""');
+                restoreCursorPosition(codeSection, cursorPos + 1);
+            }
+        }
+        if (event.key === '}') {
+            event.preventDefault();
+            subString = codeSection.innerText.substring(0, cursorPos);
+            if (subString.lastIndexOf("    ") === subString.length - 4) {
+                restoreCursorPosition(codeSection, cursorPos - 4);
+            }
+            if (prevChar != '{')
+                document.execCommand('insertText', false, '}');
+            else
+                restoreCursorPosition(codeSection, cursorPos + 1);
+        }
+        if (event.key === "'") {
+            event.preventDefault();
+            if (prevChar === "'") {
+                restoreCursorPosition(codeSection, cursorPos + 1);
+            } else {
+                document.execCommand('insertText', false, "''");
+                restoreCursorPosition(codeSection, cursorPos + 1);
+            }
+        }
+
+        if (event.key === '{') {
+            event.preventDefault();
+            document.execCommand("insertText", false, "{}");
+            restoreCursorPosition(codeSection, cursorPos + 1);
+        }
+        if (event.key === '(') {
+            event.preventDefault();
+            document.execCommand("insertText", false, "()");
+            restoreCursorPosition(codeSection, cursorPos + 1);
+        }
+        if (event.key === '[') {
+            event.preventDefault();
+            document.execCommand("insertText", false, "[]");
+            restoreCursorPosition(codeSection, cursorPos + 1);
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            openBraces = countBraces(codeSection.innerText.substring(0, cursorPos));
+
+            if (nextChar === '}') {
+                const spaces1 = ' '.repeat(openBraces * 4);
+                const spaces2 = ' '.repeat(((openBraces == 0 ? 0 : openBraces - 1)) * 4);
+                document.execCommand('insertHTML', false, '<br>' + spaces1 + '<br>' + spaces2);
+                codeSection.scrollTop = codeSection.scrollHeight;
+                highlightKeywords();
+                restoreCursorPosition(codeSection, cursorPos + 1 + openBraces * 4);
+            }else if (cursorPos === 0 || prevChar === '\n' || codeSection.innerText.length === cursorPos) {
+                event.preventDefault();
+                document.execCommand('insertHTML', false, '<br>\n');
+                codeSection.scrollTop = codeSection.scrollHeight;
+                restoreCursorPosition(codeSection, cursorPos + 1);
+                return;
+            } 
+            else {
+                const spaces = ' '.repeat(openBraces * 4);
+                document.execCommand('insertHTML', false, '<br>' + spaces);
+                codeSection.scrollTop = codeSection.scrollHeight;
+                highlightKeywords();
+                restoreCursorPosition(codeSection, cursorPos + spaces.length + 1);
+            }
+        }
+
+    }
+
+    function countBraces(string) {
+        let count = 0;
+
+        for (const char of string) {
+            if (char === '{')
+                count++;
+            if (char === '}')
+                count--;
+        }
+        return count >= 0 ? count : 0;
+    }
+
+
+
+</script>
+
+</html>
