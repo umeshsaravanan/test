@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C Compiler</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="navbar">
+        <div class="navleft">
+            <div>
+                <h2>Compiler</h2>
+                <p id="displayFileName"></p>
+            </div>
+            <a href="/mycompiler/pages/FilesPage.html">All Files</a>
+        </div>
+        <div class="navright">
+            <h3 id="username">Welcome </h3>
+            <button class="logout btn" onclick="handleSignOut()">Log out</button>
+        </div>
+    </div>
+    <div class="home">
+        <div class="left">
+            <div id="codeSection" contenteditable="true" spellcheck="false"
+                onkeydown="handleKeyDown(event)" oninput="suggestion(event)">
+            </div>
+            <button onclick="compile()" type="button" id="runBtn" disabled="true" class="btn">Run</button>
+            <div class="resultSec">
+                <textarea id="result" spellcheck="false" readonly></textarea>
+                <textarea id="inner-text-area" spellcheck="false" rows="1"
+                    placeholder="output will be displayed here..."></textarea>
+            </div>
+            <!-- <textarea id="result" placeholder="output will be displayed here..." spellcheck="false"></textarea> -->
+        </div>
+        <div class="right">
+            <div class="compilation">
+                <center style="margin-bottom: 30px;">
+                    <h3>Compilation Status</h3>
+                </center>
+                <div style="display: flex;justify-content: space-between;font-weight: bolder;">
+                    <div style="display: flex;justify-content: space-between;flex-direction: column; gap: 2rem;">
+                        <p id="compilationStatus"></p>
+                        <p id="memory"></p>
+                    </div>
+                    <div
+                        style="display: flex;justify-content: space-between;flex-direction: column; gap: 2rem; color: #218838;">
+                        <p id="bestCompilation">Best Execution Time <br></p>
+                        <p id="bestMemory">Best Memory Usage <br></p>
+                    </div>
+                </div>
+            </div>
+            <div class="inputAndUser">
+                <div class="customInput">
+                    <center>
+                        <h3>Custom Inputs</h3>
+                    </center>
+                    <hr style="margin-top: .5rem;">
+                    <textarea id="customSection" placeholder="Custom TestCase separate each testcase by newLine and also split each key value pair by semicolon"
+                        spellcheck="false"></textarea>
+                        <p id="processing" style="display: none;color: #218838;"></p>
+                    <div id="cr">
+                        <h3 style="margin-bottom: .5rem;">Result</h3>
+                        <hr>
+                        <p id="customResult"></p>
+                    </div>
+                    <button onclick="customCompile()" type="button" id="runCustomBtn" class="btn">Run
+                        with
+                        CustomInput</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            checkUser();
+        });
+    </script>
+    <script src="script.js"></script>
+    <script src="editor.js"></script>
+</body>
+
+</html>
